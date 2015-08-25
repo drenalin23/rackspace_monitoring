@@ -56,6 +56,7 @@ module RackspaceMonitoringCookbook
     # Get params after they've been processed/filtered
     module ParsedParams
       include RackspaceMonitoringCookbook::Helpers::AlarmCriteria
+      require 'chef/sugar'
 
       def parsed_agent_filename
         return new_resource.agent_filename if new_resource.agent_filename
@@ -80,7 +81,7 @@ module RackspaceMonitoringCookbook
 
       def parsed_target_hostname
         return new_resource.target_hostname if new_resource.target_hostname
-        node['cloud']['public_ipv4']
+        Chef::Sugar::IP.best_ip_for(node, other)
       end
 
       def parsed_target
