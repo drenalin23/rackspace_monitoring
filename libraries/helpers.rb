@@ -56,7 +56,6 @@ module RackspaceMonitoringCookbook
     # Get params after they've been processed/filtered
     module ParsedParams
       include RackspaceMonitoringCookbook::Helpers::AlarmCriteria
-      require 'chef-sugar'
 
       def parsed_agent_filename
         return new_resource.agent_filename if new_resource.agent_filename
