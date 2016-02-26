@@ -10,7 +10,7 @@ describe 'rackspace_monitoring_check_test::* on Centos 6.5' do
     platform: 'centos',
     version: '6.5',
     step_into: ['rackspace_monitoring_check']
-  }
+  }.freeze
 
   context 'Any check' do
     context 'rackspace_monitoring_check built from parameters' do
@@ -240,9 +240,11 @@ describe 'rackspace_monitoring_check_test::* on Centos 6.5' do
         end.converge('rackspace_monitoring_check_test::default')
       end
       it 'creates a config for each detected target' do
-        expect(chef_run).to render_file('/etc/rackspace-monitoring-agent.conf.d/agent.filesystem.slash.yaml').with_content('target: /')
-        expect(chef_run).to render_file('/etc/rackspace-monitoring-agent.conf.d/agent.filesystem.boot.yaml').with_content('target: /boot')
-        expect(chef_run).to render_file('/etc/rackspace-monitoring-agent.conf.d/agent.filesystem.home.yaml').with_content('target: /home')
+        find_filesystems(chef_run.node) do |mount|
+          fs_name = File.basename(mount).gsub('/', 'slash')
+          config_file = "/etc/rackspace-monitoring-agent.conf.d/agent.filesystem.#{fs_name}.yaml"
+          expect(chef_run).to render_file(config_file).with_content("target: #{mount}")
+        end
       end
     end
     context 'rackspace_monitoring_check with custom target' do

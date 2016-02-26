@@ -10,7 +10,7 @@ describe 'rackspace_monitoring_service_test::default on Centos 6.5' do
     platform: 'centos',
     version: '6.5',
     step_into: 'rackspace_monitoring_service'
-  }
+  }.freeze
 
   cached(:chef_run) do
     ChefSpec::SoloRunner.new(CENTOS_SERVICE_OPTS) do |node|
@@ -38,6 +38,15 @@ describe 'rackspace_monitoring_service_test::default on Centos 6.5' do
         end.converge('rackspace_monitoring_service_test::default')
       end
       it_behaves_like 'raise error about missing parameters'
+    end
+    context 'without an entity' do
+      cached(:chef_run) do
+        ChefSpec::SoloRunner.new(UBUNTU1204_SERVICE_OPTS) do |node|
+          node_resources(node)
+          node.set['rackspace_monitoring']['create_entity'] = false
+        end.converge('rackspace_monitoring_service_test::default')
+      end
+      it_behaves_like 'agent set up without entity'
     end
   end
 end

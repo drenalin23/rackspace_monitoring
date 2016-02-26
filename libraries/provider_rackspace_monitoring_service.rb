@@ -14,14 +14,14 @@ class Chef
 
       action :create do
         # Yum, Apt, etc. From helpers.rb
-        configure_package_repositories
+        configure_package_repositories(new_resource.package_channel)
 
         # Software installation
         package new_resource.package_name do
           action new_resource.package_action
         end
 
-        auto_create_entity = new_resource.create_entity ? '--auto-create-entity' : ''
+        auto_create_entity = new_resource.create_entity ? '--auto-create-entity' : '--no-entity'
 
         # Set up rackspace-monitoring-agent
         execute 'agent-setup-cloud' do

@@ -6,6 +6,8 @@ provisioner:
   name: chef_zero
   attributes:
     rackspace_monitoring:
+      create_entity: true
+      package_channel: <%= ENV['RACKSPACE_AGENT_CHANNEL'] || 'stable' %>
       cloud_credentials_username: <%= ENV['RACKSPACE_USERNAME'] %>
       cloud_credentials_api_key: <%= ENV['RACKSPACE_API_KEY']%>
     cloud:
@@ -13,7 +15,7 @@ provisioner:
       public_ipv4: 8.0.0.1
 
 platforms:
-  - name: centos-6.6
+  - name: centos-6.7
     run_list:
     - recipe[yum]
   - name: ubuntu-12.04

@@ -14,7 +14,7 @@ module RackspaceMonitoringCookbook
       end
 
       def alarm_criteria_agent_disk
-        fail 'There is no relevant default alarm_criteria for agent.disk, please provide :alarm_criteria' if new_resource.alarm && new_resource.target
+        raise 'There is no relevant default alarm_criteria for agent.disk, please provide :alarm_criteria' if new_resource.alarm && new_resource.target
       end
 
       def alarm_criteria_agent_cpu
@@ -70,12 +70,12 @@ module RackspaceMonitoringCookbook
 
       def parsed_cloud_credentials_username
         return new_resource.cloud_credentials_username if new_resource.cloud_credentials_username
-        fail 'Cloud credential username missing, cannot setup cloud-monitoring (please set :cloud_credentials_username)'
+        raise 'Cloud credential username missing, cannot setup cloud-monitoring (please set :cloud_credentials_username)'
       end
 
       def parsed_cloud_credentials_api_key
         return new_resource.cloud_credentials_api_key if new_resource.cloud_credentials_api_key
-        fail 'Cloud credential api_key missing, cannot setup cloud-monitoring (please set :cloud_credentials_api_key)'
+        raise 'Cloud credential api_key missing, cannot setup cloud-monitoring (please set :cloud_credentials_api_key)'
       end
 
       def parsed_target_hostname
@@ -111,22 +111,22 @@ module RackspaceMonitoringCookbook
 
       def parsed_send_warning
         return new_resource.send_warning if new_resource.send_warning
-        fail "You must define :send_warning for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
+        raise "You must define :send_warning for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
       end
 
       def parsed_send_critical
         return new_resource.send_critical if new_resource.send_critical
-        fail "You must define :send_critical for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
+        raise "You must define :send_critical for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
       end
 
       def parsed_recv_warning
         return new_resource.recv_warning if new_resource.recv_warning
-        fail "You must define :recv_warning for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
+        raise "You must define :recv_warning for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
       end
 
       def parsed_recv_critical
         return new_resource.recv_critical if new_resource.recv_critical
-        fail "You must define :recv_critical for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
+        raise "You must define :recv_critical for #{new_resource.type} if you enabled alarm" if new_resource.type == 'agent.network' && new_resource.alarm
       end
 
       # Get filename from URI if not defined
@@ -135,7 +135,7 @@ module RackspaceMonitoringCookbook
         if new_resource.plugin_url
           File.basename(URI(new_resource.plugin_url).request_uri)
         elsif new_resource.type == 'agent.plugin'
-          fail "You must specify at least a :plugin_filename for #{new_resource.name}"
+          raise "You must specify at least a :plugin_filename for #{new_resource.name}"
         end
       end
 
@@ -194,6 +194,14 @@ module RackspaceMonitoringCookbook
       def plugin_path
         '/usr/lib/rackspace-monitoring-agent/plugins'
       end
+
+      def excluded_fs
+        %(tmpfs devtmpfs devpts proc mqueue cgroup efivars sysfs sys securityfs configfs fusectl pstore vboxsf)
+      end
+
+      def disks_pattern
+        %r{^/dev/(sd|vd|xvd|hd)[a-z]}
+      end
     end
 
     # Any other helpers (mainly Chef resources)
@@ -210,11 +218,11 @@ module RackspaceMonitoringCookbook
         end
       end
 
-      def configure_package_repositories
+      def configure_package_repositories(channel)
         if %w(rhel fedora).include? node['platform_family']
           yum_repository 'monitoring' do
             description 'Rackspace Cloud Monitoring agent repo'
-            baseurl "https://stable.packages.cloudmonitoring.rackspace.com/#{node['platform']}-#{node['platform_version'][0]}-x86_64"
+            baseurl "https://#{channel}.packages.cloudmonitoring.rackspace.com/#{node['platform']}-#{node['platform_version'][0]}-x86_64"
             gpgkey "https://monitoring.api.rackspacecloud.com/pki/agent/#{node['platform']}-#{node['platform_version'][0]}.asc"
             enabled true
             gpgcheck true
@@ -224,7 +232,7 @@ module RackspaceMonitoringCookbook
           package 'apt-transport-https'
 
           apt_repository 'monitoring' do
-            uri "https://stable.packages.cloudmonitoring.rackspace.com/#{node['platform']}-#{node['lsb']['codename']}-x86_64"
+            uri "https://#{channel}.packages.cloudmonitoring.rackspace.com/#{node['platform']}-#{node['lsb']['codename']}-x86_64"
             distribution 'cloudmonitoring'
             components ['main']
             key 'https://monitoring.api.rackspacecloud.com/pki/agent/linux.asc'
@@ -232,7 +240,7 @@ module RackspaceMonitoringCookbook
           end
         else
           apt_repository 'monitoring' do
-            uri "https://stable.packages.cloudmonitoring.rackspace.com/#{node['platform']}-#{node['lsb']['release']}-x86_64"
+            uri "https://#{channel}.packages.cloudmonitoring.rackspace.com/#{node['platform']}-#{node['lsb']['release']}-x86_64"
             distribution 'cloudmonitoring'
             components ['main']
             key 'https://monitoring.api.rackspacecloud.com/pki/agent/linux.asc'
@@ -243,7 +251,6 @@ module RackspaceMonitoringCookbook
 
       def target_filesystem
         target = []
-        excluded_fs = %(tmpfs devtmpfs devpts proc mqueue cgroup efivars sysfs sys securityfs configfs fusectl pstore vboxsf)
         unless node['filesystem'].nil?
           node['filesystem'].each do |key, data|
             next if data['percent_used'].nil? || data['fs_type'].nil?
@@ -258,7 +265,7 @@ module RackspaceMonitoringCookbook
       def target_disk
         target = []
         node['filesystem'].each do |key, data|
-          if key =~ %r{^/dev/(sd|vd|xvd|hd)[a-z]}
+          if key =~ disks_pattern
             Chef::Log.warn("Found disk : #{key}")
             target << key
           end
